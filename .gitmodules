@@ -1,4 +1,4 @@
 [submodule "proto"]
 	path = proto
-	url = https://github.com/Elite-Redux/er-config.git
+	url = git@github.com:somethingorsomeonehere/pokemon-hyperion-config.git
 	branch = upcoming
