@@ -729,6 +729,11 @@ static s16 AI_CheckBadMove(u8 battlerAtk, u8 battlerDef, u16 move, s16 score) {
             GetTotalAccuracy(battlerAtk, battlerDef, move, NULL) <= 100)
             RETURN_SCORE_MINUS(5);
 
+        //Bad Luck
+        if(BATTLER_HAS_ABILITY(battlerDef, ABILITY_BAD_LUCK) && accuracy <= 100) {
+            RETURN_SCORE_MINUS(20);
+        }
+
         // Wonder Guard
         if (BattlerHasAbility(battlerDef, ABILITY_WONDER_GUARD, TRUE)) {
             if (effectiveness > AI_EFFECTIVENESS_x2 && gBattleMoves[move].power > 0) RETURN_SCORE_MINUS(20);
