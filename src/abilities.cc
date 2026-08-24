@@ -4275,8 +4275,8 @@ constexpr Ability Impl<ABILITY_SWEET_DREAMS> = {
 template <>
 constexpr Ability Impl<ABILITY_BAD_LUCK> = {
     .onAccuracy = +[](ON_ACCURACY) -> AccuracyPriority {
-        *accuracy -= 5;
-        return ACCURACY_ADDITIVE;
+        if(*accuracy < 100 && *accuracy > 0) *accuracy *= 0;
+        return ACCURACY_MULTIPLICATIVE;
     },
     .onCrit = +[](ON_CRIT) -> int { return NEVER_CRIT; },
     .onModifyEffectChance =
@@ -4286,7 +4286,6 @@ constexpr Ability Impl<ABILITY_BAD_LUCK> = {
     .onAccuracyFor = APPLY_ON_TARGET,
     .onCritFor = APPLY_ON_FOE,
     .onModifyEffectChanceFor = APPLY_ON_FOE,
-    .breakable = TRUE,
     .foesMinRoll = TRUE,
 };
 
