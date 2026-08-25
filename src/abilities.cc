@@ -1717,10 +1717,16 @@ constexpr Ability Impl<ABILITY_SLOW_START> = {
         gVolatileStructs[battler].slowStartTimer = 5;
         return SwitchInAnnounce(B_MSG_SWITCHIN_SLOWSTART);
     },
+    .onDefensiveMultiplier = +[](ON_DEFENSIVE_MULTIPLIER) { MUL(.5); },
     .onStat =
         +[](ON_STAT) {
             if (statId != STAT_ATK && statId != STAT_SPATK && statId != STAT_SPEED) return;
-            if (gVolatileStructs[battler].slowStartTimer) *stat /= 2;
+            if (gVolatileStructs[battler].slowStartTimer) {
+                *stat /= 2;
+            }
+            else {
+                *stat *= 1.5;
+            }
         },
 };
 
@@ -2320,7 +2326,6 @@ constexpr Ability Impl<ABILITY_FUR_COAT> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_MOVE_PHYSICAL(move)) MUL(.5);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -3317,7 +3322,6 @@ constexpr Ability Impl<ABILITY_ICE_SCALES> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_MOVE_SPECIAL(move)) MUL(.5);
         },
-    .breakable = TRUE,
 };
 
 int IceFaceReformHandler(u8 battler, AbilityCallType callType) {
@@ -4926,7 +4930,6 @@ constexpr Ability Impl<ABILITY_HARDENED_SHEATH> = {
 template <>
 constexpr Ability Impl<ABILITY_ARCTIC_FUR> = {
     .onDefensiveMultiplier = +[](ON_DEFENSIVE_MULTIPLIER) { MUL(.65); },
-    .breakable = TRUE,
 };
 
 template <>
@@ -7268,7 +7271,6 @@ constexpr Ability Impl<ABILITY_ILL_WILL> = {
 template <>
 constexpr Ability Impl<ABILITY_FIRE_SCALES> = {
     .onDefensiveMultiplier = Impl<ABILITY_ICE_SCALES>.onDefensiveMultiplier,
-    .breakable = TRUE,
 };
 
 template <>
@@ -7724,7 +7726,6 @@ constexpr Ability Impl<ABILITY_REJECTION> = {
 template <>
 constexpr Ability Impl<ABILITY_APPLE_ENLIGHTENMENT> = {
     .onDefensiveMultiplier = Impl<ABILITY_FUR_COAT>.onDefensiveMultiplier,
-    .breakable = TRUE,
     .magicGuard = TRUE,
 };
 
@@ -9923,7 +9924,7 @@ constexpr Ability Impl<ABILITY_MADNESS_ENHANCEMENT> = {
     .onDefensiveMultiplier =
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (gBattleMons[battler].status2 & STATUS2_ENRAGED) {
-                MUL(.8);
+                MUL(.5);
             }
         },
 };
@@ -10567,7 +10568,6 @@ constexpr Ability Impl<ABILITY_CHRISTMAS_NIGHTMARE> = {
 template <>
 constexpr Ability Impl<ABILITY_ICE_PLUMES> = {
     .onDefensiveMultiplier = Impl<ABILITY_ICE_SCALES>.onDefensiveMultiplier,
-    .breakable = TRUE,
 };
 
 template <>
@@ -11890,7 +11890,6 @@ template <>
 constexpr Ability Impl<ABILITY_RAINBOW_SCALES> = {
     .onEntry = Impl<ABILITY_TASTE_THE_RAINBOW>.onEntry,
     .onDefensiveMultiplier = Impl<ABILITY_FIRE_SCALES>.onDefensiveMultiplier,
-    .breakable = TRUE,
 };
 
 template <>
@@ -12666,6 +12665,27 @@ constexpr Ability Impl<ABILITY_OVERCLOCK> = {
                Impl<ABILITY_OVERCHARGE>.onTypeEffectiveness(DELEGATE_TYPE_EFFECTIVENESS);
     },
     .onCanStatusType = Impl<ABILITY_OVERCHARGE>.onCanStatusType,
+};
+
+template <>
+constexpr Ability Impl<ABILITY_GAIA_SHAPER> = {
+    .onEntry = +[](ON_ENTRY) -> int {
+        CHECK_NOT(gFieldStatuses & STATUS_FIELD_GRAVITY)
+
+        gFieldTimers.started.gravity = TRUE;
+        gFieldTimers.gravityTimer = GRAVITY_DURATION_EXTENDED;
+        gFieldStatuses |= STATUS_FIELD_GRAVITY;
+        BattleScriptPushCursorAndCallback(BattleScript_GravityStarts);
+        return TRUE;
+    },
+    .onChooseOffensiveStat = Impl<ABILITY_POWER_CORE>.onChooseOffensiveStat,
+    .onCrit = +[](ON_CRIT) -> int { return NEVER_CRIT; },
+    .onStatusImmune = +[](ON_STATUS_IMMUNE) -> int {
+        CHECK(status & CHECK_PARALYSIS)
+        return TRUE;
+    },
+    .onCritFor = APPLY_ON_FOE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 #define FOR_EACH_ABILITY_FUNCTION(abilityId) \
