@@ -6846,7 +6846,7 @@ static void Cmd_various(void) {
 
                     if (!(gStatuses3[gBattlerTarget] & STATUS3_EMBARGO)) {
                         gStatuses3[gBattlerTarget] |= STATUS3_EMBARGO;
-                        gVolatileStructs[gBattlerTarget].embargoTimer = 2;
+                        gVolatileStructs[gBattlerTarget].embargoTimer = 8;
                     }
                     return;
                 }

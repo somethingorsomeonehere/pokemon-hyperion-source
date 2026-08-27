@@ -455,10 +455,6 @@ int ScoreDefenseAbility(AbilityEnum ability, int battlerAtk, int battlerDef, int
             REQUIRE(moveState->seeKo)
             return AI_SCORE_EXTRA_MOVE(battlerDef, battlerAtk, MOVE_EXPLOSION, 0);
 
-        case ABILITY_ULTRA_INSTINCT:
-            REQUIRE(moveState->contact)
-            return AI_SCORE_EXTRA_MOVE(battlerDef, battlerAtk, MOVE_VACUUM_WAVE, 0);
-
         case ABILITY_ICE_DOWNFALL:
             REQUIRE(moveState->contact)
             return AI_SCORE_EXTRA_MOVE(battlerDef, battlerAtk, MOVE_ICICLE_CRASH, 60);

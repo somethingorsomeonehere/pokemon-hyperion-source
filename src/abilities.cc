@@ -1558,11 +1558,11 @@ template <>
 constexpr Ability Impl<ABILITY_NORMALIZE> = {
     .onOffensiveMultiplier =
         +[](ON_OFFENSIVE_MULTIPLIER) {
-            if (moveType == TYPE_NORMAL && gBattleStruct->ateBoost[battler]) MUL(1.1);
+            MUL(1.1);
         },
     .onMoveType = +[](ON_MOVE_TYPE) -> int { return TYPE_NORMAL + 1; },
     .onTypeEffectiveness = +[](ON_TYPE_EFFECTIVENESS) -> int {
-        CHECK(moveType == TYPE_NORMAL) CHECK(*mod) CHECK(*mod < UQ_4_12(1.0))* mod = UQ_4_12(1.0);
+        CHECK(moveType == TYPE_NORMAL) CHECK(*mod < UQ_4_12(1.0)) *mod = UQ_4_12(1.0);
         return TRUE;
     },
 };
@@ -1791,7 +1791,6 @@ template <>
 constexpr Ability Impl<ABILITY_HONEY_GATHER> = {
     .onEndTurn = +[](ON_END_TURN) -> int {
         CHECK_NOT(gBattleMons[battler].item)
-        CHECK(Random() % 2)
 
         UpdateBattlerItem(battler, ITEM_HONEY);
         gLastUsedItem = ITEM_HONEY;
@@ -2186,6 +2185,7 @@ constexpr Ability Impl<ABILITY_JUSTIFIED> = {
         *statId = GetHighestAttackingStatId(battler, TRUE);
         return ABSORB_RESULT_STAT;
     },
+    .breakable = TRUE,
 };
 
 template <>
@@ -3889,10 +3889,6 @@ constexpr Ability Impl<ABILITY_LEAD_COAT> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_MOVE_PHYSICAL(move)) MUL(.6);
         },
-    .onStat =
-        +[](ON_STAT) {
-            if (statId == STAT_SPEED) *stat *= .9;
-        },
     .breakable = TRUE,
 };
 
@@ -4081,7 +4077,6 @@ constexpr Ability Impl<ABILITY_DRAGONSLAYER> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_BATTLER_OF_TYPE(attacker, TYPE_DRAGON)) MUL(.5);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -5709,7 +5704,6 @@ constexpr Ability Impl<ABILITY_FAE_HUNTER> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_BATTLER_OF_TYPE(attacker, TYPE_FAIRY)) RESISTANCE(.5);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -5744,7 +5738,6 @@ constexpr Ability Impl<ABILITY_LUMBERJACK> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_BATTLER_OF_TYPE(attacker, TYPE_GRASS)) RESISTANCE(.5);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -6652,7 +6645,7 @@ constexpr Ability Impl<ABILITY_FLAMING_JAWS> = {
 };
 
 template <>
-constexpr Ability Impl<ABILITY_MONSTER_HUNTER> = {
+constexpr Ability Impl<ABILITY_PUNISHER> = {
     .onOffensiveMultiplier =
         +[](ON_OFFENSIVE_MULTIPLIER) {
             if (IS_BATTLER_OF_TYPE(target, TYPE_DARK)) RESISTANCE(1.5);
@@ -6661,7 +6654,6 @@ constexpr Ability Impl<ABILITY_MONSTER_HUNTER> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_BATTLER_OF_TYPE(attacker, TYPE_DARK)) MUL(.5);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -6804,7 +6796,6 @@ constexpr Ability Impl<ABILITY_CHROME_COAT> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_MOVE_SPECIAL(move)) MUL(.6);
         },
-    .onStat = Impl<ABILITY_LEAD_COAT>.onStat,
     .breakable = TRUE,
 };
 
@@ -8198,14 +8189,11 @@ constexpr Ability Impl<ABILITY_SUPERCONDUCTOR> = {
 
 template <>
 constexpr Ability Impl<ABILITY_ULTRA_INSTINCT> = {
-    .onDefender = +[](ON_DEFENDER) -> int {
-        CHECK(ShouldApplyOnHitEffect(attacker))
-        CHECK(IsMoveMakingContact(move, attacker))
-
-        UseOutOfTurnAttack(battler, attacker, ability, MOVE_VACUUM_WAVE, 20);
-        return FALSE;
-    },
-    .onDefensiveMultiplier = Impl<ABILITY_PARRY>.onDefensiveMultiplier,
+    .onChooseDefensiveStat =
+        +[](ON_CHOOSE_DEFENSIVE_STAT) {
+            *defStatToUse = STAT_SPEED;
+        },
+    .onChooseDefensiveStatFor = APPLY_ON_TARGET,
 };
 
 template <>
@@ -8279,14 +8267,32 @@ constexpr Ability Impl<ABILITY_PATTERN_CHANGE> = {
 
 template <>
 constexpr Ability Impl<ABILITY_NO_TURNING_BACK> = {
-    .onDefender = +[](ON_DEFENDER) -> int {
-        CHECK(CheckHalfHpAbility(battler, attacker))
+/*
+    .onEntry = +[](ON_ENTRY) -> int {
         CHECK_NOT(GetAbilityState(battler, ability))
         CHECK_NOT(gVolatileStructs[battler].noRetreat || gBattleMons[battler].status2 & STATUS2_ESCAPE_PREVENTION)
 
         SetAbilityState(battler, ability, TRUE);
-        BattleScriptCall(BattleScript_NoTurningBack);
+        BattleScriptPushCursorAndCallback(BattleScript_NoTurningBack);
         return TRUE;
+    },
+*/
+    .onEntry = +[](ON_ENTRY) -> int {
+
+        CHECK_NOT(gVolatileStructs[battler].noRetreat || gBattleMons[battler].status2 & STATUS2_ESCAPE_PREVENTION) 
+
+        UseEntryMove(battler, ability, MOVE_NO_RETREAT, 0);
+
+        if(!(gVolatileStructs[battler].noRetreat)) {
+            gVolatileStructs[battler].noRetreat = TRUE;
+        }
+
+        if(!(gBattleMons[battler].status2 & STATUS2_ESCAPE_PREVENTION)) {
+            gBattleMons[battler].status2 |= STATUS2_ESCAPE_PREVENTION;
+            gVolatileStructs[battler].battlerPreventingEscape = battler;
+        }
+
+        return true;
     },
 };
 
@@ -8785,11 +8791,6 @@ constexpr Ability Impl<ABILITY_HOT_COALS> = {
 template <>
 constexpr Ability Impl<ABILITY_TERASTAL_TREASURE> = {
     .onDefensiveMultiplier = +[](ON_DEFENSIVE_MULTIPLIER) { MUL(.6); },
-    .onStat =
-        +[](ON_STAT) {
-            if (statId == STAT_SPEED) *stat *= .8;
-        },
-    .breakable = TRUE,
 };
 
 template <>
@@ -9782,7 +9783,6 @@ constexpr Ability Impl<ABILITY_FIREFIGHTER> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (IS_BATTLER_OF_TYPE(attacker, TYPE_FIRE)) MUL(.5);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -10786,10 +10786,6 @@ constexpr Ability Impl<ABILITY_THICK_BLUBBER> = {
         +[](ON_DEFENSIVE_MULTIPLIER) {
             if (moveType == TYPE_FIRE || moveType == TYPE_ICE) RESISTANCE(.25);
         },
-    .onStat =
-        +[](ON_STAT) {
-            if (statId == STAT_SPEED) *stat *= .5;
-        },
 };
 
 template <>
@@ -11714,11 +11710,22 @@ constexpr Ability Impl<ABILITY_OVERCAST> = {
 
 template <>
 constexpr Ability Impl<ABILITY_STEADFAST> = {
+    .onStatusImmune = +[](ON_STATUS_IMMUNE) -> int {
+        CHECK(status & CHECK_PARALYSIS)
+        return TRUE;
+    },
+    .removesStatusOnImmunity = TRUE,
+    .suctionCups = TRUE,
     .steadfast = TRUE,
 };
 
 template <>
 constexpr Ability Impl<ABILITY_SUPERHEAVY> = {
+    .onStatusImmune = +[](ON_STATUS_IMMUNE) -> int {
+        CHECK(status & CHECK_PARALYSIS)
+        return TRUE;
+    },
+    .removesStatusOnImmunity = TRUE,
     .suctionCups = TRUE,
     .steadfast = TRUE,
 };
@@ -12686,6 +12693,23 @@ constexpr Ability Impl<ABILITY_GAIA_SHAPER> = {
     },
     .onCritFor = APPLY_ON_FOE,
     .removesStatusOnImmunity = TRUE,
+};
+
+template <>
+constexpr Ability Impl<ABILITY_SUPERHERO> = {
+    .onAbsorb = +[](ON_ABSORB) -> int {
+        CHECK(moveType == TYPE_DARK);
+        *statId = GetHighestAttackingStatId(battler, TRUE);
+        return ABSORB_RESULT_STAT;
+    },
+    .onOffensiveMultiplier =
+        +[](ON_OFFENSIVE_MULTIPLIER) {
+            if (IS_BATTLER_OF_TYPE(target, TYPE_DARK)) RESISTANCE(1.5);
+        },
+    .onDefensiveMultiplier =
+        +[](ON_DEFENSIVE_MULTIPLIER) {
+            if (IS_BATTLER_OF_TYPE(attacker, TYPE_DARK)) MUL(.5);
+        },
 };
 
 #define FOR_EACH_ABILITY_FUNCTION(abilityId) \
