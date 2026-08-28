@@ -9954,13 +9954,24 @@ constexpr IntimidateCloneData Intimidate<ABILITY_SCARECROW> = Intimidate<ABILITY
 template <>
 constexpr Ability Impl<ABILITY_SCARECROW> = {
     .onEntry = UseIntimidateClone,
-    .onDefender = Impl<ABILITY_COTTON_DOWN>.onDefender,
+    .onAccuracy = +[](ON_ACCURACY) -> AccuracyPriority {
+        if(*accuracy < 100 && *accuracy > 0) *accuracy *= 0;
+        return ACCURACY_MULTIPLICATIVE;
+    },
+    .onCrit = +[](ON_CRIT) -> int { return NEVER_CRIT; },
+    .onModifyEffectChance =
+        +[](ON_MODIFY_EFFECT_CHANCE) {
+            if (*effectChance < 100) *effectChance = 0;
+        },
+    .onAccuracyFor = APPLY_ON_TARGET,
+    .onCritFor = APPLY_ON_FOE,
+    .onModifyEffectChanceFor = APPLY_ON_FOE,
+    .foesMinRoll = TRUE,
 };
 
 template <>
 constexpr Ability Impl<ABILITY_OMINOUS_SHROUD> = {
-    .onEntry = Impl<ABILITY_PHANTOM>.onEntry,
-    .onDefensiveMultiplier = Impl<ABILITY_SHADOW_SHIELD>.onDefensiveMultiplier,
+    .onEntry = +[](ON_ENTRY) -> int { UseEntryMove(battler, ability, MOVE_EERIE_FOG, 0); return AddBattlerType(battler, TYPE_GHOST); },
     .addsType = TYPE_GHOST,
 };
 
@@ -10225,9 +10236,20 @@ constexpr Ability Impl<ABILITY_LIGHTNING_BORN> = {
 };
 
 template <>
-constexpr Ability Impl<ABILITY_LUCKY_WINGS> = {
-    .onOffensiveMultiplier = Impl<ABILITY_GIANT_WINGS>.onOffensiveMultiplier,
-    .onModifyEffectChance = Impl<ABILITY_SERENE_GRACE>.onModifyEffectChance,
+constexpr Ability Impl<ABILITY_HEAVENS_GRACE> = {
+    .onAccuracy = +[](ON_ACCURACY) -> AccuracyPriority {
+        if(*accuracy < 100 && *accuracy > 0) *accuracy *= 0;
+        return ACCURACY_MULTIPLICATIVE;
+    },
+    .onCrit = +[](ON_CRIT) -> int { return NEVER_CRIT; },
+    .onModifyEffectChance =
+        +[](ON_MODIFY_EFFECT_CHANCE) {
+            if (*effectChance < 100) *effectChance = 0;
+        },
+    .onAccuracyFor = APPLY_ON_TARGET,
+    .onCritFor = APPLY_ON_FOE,
+    .onModifyEffectChanceFor = APPLY_ON_FOE,
+    .foesMinRoll = TRUE,
 };
 
 template <>

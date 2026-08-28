@@ -6889,7 +6889,7 @@ static u16 CalcMoveBasePower(MoveEnum move, u8 battlerAtk, u8 battlerDef) {
                     basePower += 10 * gFaintedMonCount[GetBattlerSide(battlerAtk)];
                     break;
                 case MISC_EFFECT_ELECTRIC_TERRAIN_BOOST:
-                    if (IsBattlerTerrainAffected(battlerAtk, STATUS_FIELD_ELECTRIC_TERRAIN)) basePower = basePower * 3 / 2;
+                    if (IsBattlerTerrainAffected(battlerAtk, STATUS_FIELD_ELECTRIC_TERRAIN)) basePower = basePower * 13 / 10;
                     break;
                 case MISC_EFFECT_TOOK_DAMAGE_BOOST:
                     basePower += 20 * min(6, gBattleStruct->timesDamaged[gBattlerPartyIndexes[battlerAtk]][GetBattlerSide(battlerAtk)]);
@@ -7068,7 +7068,7 @@ u32 CalcMoveBasePowerAfterModifiers(MoveEnum move, u8 fixedPower, u8 battlerAtk,
         case EFFECT_MAGNITUDE:
         case EFFECT_EARTHQUAKE:
             if (GetCurrentTerrain() == STATUS_FIELD_GRASSY_TERRAIN && !(gStatuses3[battlerDef] & STATUS3_SEMI_INVULNERABLE))
-                MulModifier(&modifier, UQ_4_12(1.0));
+                MulModifier(&modifier, UQ_4_12(0.5));
             break;
         case EFFECT_KNOCK_OFF:
 #if B_KNOCK_OFF_DMG >= GEN_6
@@ -7110,7 +7110,7 @@ u32 CalcMoveBasePowerAfterModifiers(MoveEnum move, u8 fixedPower, u8 battlerAtk,
                 break;
         }
 
-        if (terrainType == moveType) MUL_MODIFIER(&modifier, 1.3);
+        if (terrainType == moveType && (terrainType != TYPE_FAIRY)) MUL_MODIFIER(&modifier, 1.3);
     }
 
     return ApplyModifier(modifier, actualPower);

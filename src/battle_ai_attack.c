@@ -1603,9 +1603,6 @@ int ScoreMoveHit(int battlerAtk, int battlerDef, int moveEffect, int move, int t
         CASE_AND_LABEL(EFFECT_INFERNAL_PARADE)
         GOTO(EFFECT_ARGUMENT_HIT);
 
-        CASE_AND_LABEL(EFFECT_MISTY_TERRAIN_BOOST)
-        return AI_SCORE_IMMUNE;
-
         CASE_AND_LABEL(EFFECT_BERRY_SMASH)
         AI_CALC_DAMAGE;
         return score + AI_SCORE_EAT_BERRY(battlerAtk);
