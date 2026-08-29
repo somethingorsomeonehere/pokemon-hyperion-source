@@ -10640,7 +10640,6 @@ constexpr Ability Impl<ABILITY_MOLTEN_CORE> = {
         *statId = STAT_SPEED;
         return ABSORB_RESULT_STAT;
     },
-    .breakable = TRUE,
     .absorbUp2 = TRUE,
     .stealthRockImmune = TRUE,
 };

@@ -6893,13 +6893,25 @@ static void Cmd_various(void) {
             else if (ItemId_GetPocket(gBattleMons[gActiveBattler].item) != POCKET_BERRIES)
                 gBattlescriptCurrInstr = ptr;
             return;
+//Grassy terrain healing
         case VARIOUS_CHECK_IF_GRASSY_TERRAIN_HEALS:
             ptr = READ_PTR_INC;
-            if ((gStatuses3[gActiveBattler] & (STATUS3_SEMI_INVULNERABLE)) || BATTLER_MAX_HP(gActiveBattler) || !gBattleMons[gActiveBattler].hp ||
-                !(IsBattlerGrounded(gActiveBattler))) {
+            if ((gStatuses3[gActiveBattler] & (STATUS3_SEMI_INVULNERABLE)) || BATTLER_MAX_HP(gActiveBattler) || !gBattleMons[gActiveBattler].hp 
+            || !(IsBattlerGrounded(gActiveBattler))) 
+            {
                 gBattlescriptCurrInstr = ptr;
-            } else {
-                gBattleMoveDamage = gBattleMons[gActiveBattler].maxHP / 16;
+            } 
+            else 
+            {   
+                if(!(IS_BATTLER_OF_TYPE(gActiveBattler, TYPE_GRASS)))
+                {
+                    gBattleMoveDamage = gBattleMons[gActiveBattler].maxHP / 16;
+                }
+//Heal grass types twice as much
+                else
+                {
+                    gBattleMoveDamage = gBattleMons[gActiveBattler].maxHP / 8;
+                }
                 if (gBattleMoveDamage == 0) gBattleMoveDamage = 1;
                 gBattleMoveDamage *= -1;
             }
@@ -10421,18 +10433,32 @@ int IsHailImmune(int battler) {
 
 static void Cmd_weatherdamage(void) {
     gBattleMoveDamage = 0;
-    if (IsBattlerAlive(gBattlerAttacker) && WEATHER_HAS_EFFECT  // Sandstorm damage
+    if (IsBattlerAlive(gBattlerAttacker) && WEATHER_HAS_EFFECT  
         && !(IsMagicGuardProtected(gBattlerAttacker))) {
+// Sandstorm damage
         if (gBattleWeather & WEATHER_SANDSTORM_ANY) {
             if (!IsSandImmune(gBattlerAttacker)) {
-                gBattleMoveDamage = gBattleMons[gBattlerAttacker].maxHP / 16;
+                if(!IS_BATTLER_OF_TYPE(gBattlerAttacker, TYPE_WATER)) {
+                    gBattleMoveDamage = gBattleMons[gBattlerAttacker].maxHP / 16;
+                }
+// Sandstorm does more damage to Water
+                else {
+                    gBattleMoveDamage = gBattleMons[gBattlerAttacker].maxHP / 8;
+                }
                 if (gBattleMoveDamage == 0) gBattleMoveDamage = 1;
             }
         }
-        if (gBattleWeather & WEATHER_HAIL_ANY)  // Hail damage
+// Hail damage
+        if (gBattleWeather & WEATHER_HAIL_ANY)  
         {
             if (!IsHailImmune(gBattlerAttacker)) {
-                gBattleMoveDamage = gBattleMons[gBattlerAttacker].maxHP / 16;
+                if(!IS_BATTLER_OF_TYPE(gBattlerAttacker, TYPE_STEEL)) {
+                    gBattleMoveDamage = gBattleMons[gBattlerAttacker].maxHP / 16;
+                }
+// Hail does more damage to Steel
+                else {
+                    gBattleMoveDamage = gBattleMons[gBattlerAttacker].maxHP / 8;
+                }
                 if (gBattleMoveDamage == 0) gBattleMoveDamage = 1;
             }
         }

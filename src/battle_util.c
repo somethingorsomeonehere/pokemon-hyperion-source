@@ -7073,7 +7073,7 @@ u32 CalcMoveBasePowerAfterModifiers(MoveEnum move, u8 fixedPower, u8 battlerAtk,
         case EFFECT_KNOCK_OFF:
 #if B_KNOCK_OFF_DMG >= GEN_6
             if (gBattleMons[battlerDef].item != ITEM_NONE && CanBattlerGetOrLoseItem(battlerDef, gBattleMons[battlerDef].item))
-                MulModifier(&modifier, UQ_4_12(1.5));
+                MulModifier(&modifier, UQ_4_12(1.0));
 #endif
             break;
     }
@@ -7586,52 +7586,80 @@ u32 CalcFinalDmg(u32 dmg, MoveEnum move, u8 battlerAtk, u8 battlerDef, u8 moveTy
 
 #define CHECK_WEATHER_DOUBLE_BOOST(boost, drop) (BATTLER_HAS_ABILITY(battlerAtk, ABILITY_WEATHER_DOUBLE_BOOST) ? UQ_4_12(boost) : UQ_4_12(drop))
 
-    // check sunny/rain weather
-    if (IsBattlerWeatherAffected(battlerAtk, WEATHER_RAIN_PERMANENT)) {
-        if (gBattleMoves[move].effect == EFFECT_WEATHER_BOOST)
-            dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.2 * 1.2, 1.2), dmg);
-        else if (moveType == TYPE_FIRE)
-            dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.2, 0.5), dmg);
-        else if (moveType == TYPE_WATER)
-            dmg = ApplyModifier(UQ_4_12(1.2), dmg);
-    } else if (IsBattlerWeatherAffected(battlerAtk, WEATHER_RAIN_TEMPORARY | WEATHER_RAIN_PRIMAL)) {
-        if (gBattleMoves[move].effect == EFFECT_WEATHER_BOOST)
-            dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.5 * 1.5, 1.5), dmg);
-        else if (moveType == TYPE_FIRE)
-            dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.5, 0.5), dmg);
-        else if (moveType == TYPE_WATER)
-            dmg = ApplyModifier(UQ_4_12(1.5), dmg);
-    } else if (IsBattlerWeatherAffected(battlerAtk, WEATHER_SUN_PERMANENT)) {
-        if (gBattleMoves[move].effect == EFFECT_WEATHER_BOOST)
-            dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.2 * 1.2, 1.2), dmg);
-        else if (moveType == TYPE_FIRE)
-            dmg = ApplyModifier(UQ_4_12(1.2), dmg);
-        else if (moveType == TYPE_WATER) {
-            u16 modifier = CHECK_WEATHER_DOUBLE_BOOST(1.2, 0.5);
-            if (modifier < UQ_4_12(1.0)) {
-                if (BATTLER_HAS_ABILITY(battlerAtk, ABILITY_NIKA))
-                    modifier = UQ_4_12(1.0);
-                else if (move == MOVE_STEAM_ERUPTION)
-                    modifier = UQ_4_12(1.0);
+//Check sunny/rain weather
+
+//Rain damage multipliers
+    if (IsBattlerWeatherAffected(battlerAtk, WEATHER_RAIN_TEMPORARY | WEATHER_RAIN_PRIMAL | WEATHER_RAIN_PERMANENT)) 
+    {
+        if (moveType == TYPE_WATER)
+        {
+//Water move under rain
+            if (!(gBattleMoves[move].effect == EFFECT_WEATHER_BOOST))
+            {            
+                dmg = ApplyModifier(1.3, dmg);
             }
-            dmg = ApplyModifier(modifier, dmg);
+//Hydro Steam under rain
+            else
+            {
+                dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.3 * 1.5, 1.3), dmg);
+            }
         }
-    } else if (IsBattlerWeatherAffected(battlerAtk, WEATHER_SUN_TEMPORARY | WEATHER_SUN_PRIMAL)) {
-        if (gBattleMoves[move].effect == EFFECT_WEATHER_BOOST)
-            dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.5 * 1.5, 1.5), dmg);
         else if (moveType == TYPE_FIRE)
-            dmg = ApplyModifier(UQ_4_12(1.5), dmg);
-        else if (moveType == TYPE_WATER) {
-            u16 modifier = CHECK_WEATHER_DOUBLE_BOOST(1.5, 0.5);
-            if (modifier < UQ_4_12(1.0)) {
-                if (BATTLER_HAS_ABILITY(battlerAtk, ABILITY_NIKA))
-                    modifier = UQ_4_12(1.0);
-                else if (move == MOVE_STEAM_ERUPTION)
-                    modifier = UQ_4_12(1.0);
+        {
+//Fire move under rain
+            if (!(gBattleMoves[move].effect == EFFECT_WEATHER_BOOST))
+            {            
+                dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.3, 0.5), dmg);
             }
-            dmg = ApplyModifier(modifier, dmg);
+//Boiling Flame under rain
+            else
+            {
+                dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.5 * 1.3, 1.5), dmg);
+            }
         }
     }
+//Sun damage multipliers
+    else if (IsBattlerWeatherAffected(battlerAtk, WEATHER_SUN_TEMPORARY | WEATHER_SUN_PRIMAL | WEATHER_SUN_PERMANENT))
+    {
+        if (moveType == TYPE_FIRE)
+        {
+//Fire move under sun
+            if (!(gBattleMoves[move].effect == EFFECT_WEATHER_BOOST))
+            {            
+                dmg = ApplyModifier(1.3, dmg);
+            }
+//Boiling Flame under sun
+            else
+            {
+                dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.3 * 1.5, 1.3), dmg);
+            }
+        }
+        else if (moveType == TYPE_WATER)
+        {
+//Water move under sun
+            if (!(gBattleMoves[move].effect == EFFECT_WEATHER_BOOST))
+            {
+                u16 modifier = CHECK_WEATHER_DOUBLE_BOOST(1.3, 0.5);
+//Check if not Catastrophe
+                if (modifier < UQ_4_12(1.0)) 
+                {
+//Check Nika or Steam Eruption            
+                    if (BATTLER_HAS_ABILITY(battlerAtk, ABILITY_NIKA) || move == MOVE_STEAM_ERUPTION)
+                    {
+                        modifier = UQ_4_12(1.0);
+                    }
+                }
+
+                dmg = ApplyModifier(modifier, dmg);
+            }
+//Hydro Steam under sun
+            else
+            {
+                dmg = ApplyModifier(CHECK_WEATHER_DOUBLE_BOOST(1.5 * 1.3, 1.5), dmg);
+            }
+        }
+    }
+
 
 #undef CHECK_WEATHER_DOUBLE_BOOST
 

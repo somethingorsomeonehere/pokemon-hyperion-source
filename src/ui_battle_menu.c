@@ -3867,11 +3867,11 @@ const u8 sText_Title_Field_Weather_EerieFog[] = _("Eerie Fog");
 
 const u8 sText_Title_Field_Weather_Description_Rain[] =
     _("Strengthens Water-type moves by\n"
-      "50% while weakening Fire-type\n"
+      "30% while weakening Fire-type\n"
       "moves by 50%.");
 const u8 sText_Title_Field_Weather_Description_Sun[] =
     _("Strengthens the power of Fire-type\n"
-      "moves by 50% and weakens Water-type\n"
+      "moves by 30% and weakens Water-type\n"
       "moves by 50%.");
 const u8 sText_Title_Field_Weather_Description_Sandstorm[] =
     _("Any Pokémon that is not Rock, Ground\n"
@@ -3915,8 +3915,7 @@ const u8 sText_Title_Field_Terrain_Description_Psychic[] =
       "Psychic-type moves is boosted.");
 const u8 sText_Title_Field_Terrain_Description_Misty[] =
     _("Pokémon on the ground won't get any\n"
-      "status conditions. The power of\n"
-      "Fairy-type moves is boosted.");
+      "status conditions.");
 const u8 sText_Title_Field_Terrain_Description_Grassy[] =
     _("Increases the power of Grass-type\n"
       "moves, Restores 1/16 HP to all\n"
