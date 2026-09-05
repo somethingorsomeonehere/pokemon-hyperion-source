@@ -3266,6 +3266,18 @@ BattleScript_AbilityDrainsHp::
 	call BattleScript_AbsorbLeech
 	end2
 
+BattleScript_AbilityDrainsHpCanBeFromMultiple::
+	hpfractiontodamage BS_STACK_2, 10
+	copybyte gBattlerAttacker, gStackBattler1
+	copybyte gBattlerTarget, gStackBattler2
+	printstring STRINGID_LIFE_STEAL
+	waitmessage B_WAIT_TIME_LONG
+	healthbarupdate BS_TARGET
+	datahpupdate BS_TARGET
+	manipulatedamage DMG_CHANGE_SIGN
+	call BattleScript_AbsorbLeech
+	end3
+
 BattleScript_EffectAbsorb::
 	attackcanceler
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE

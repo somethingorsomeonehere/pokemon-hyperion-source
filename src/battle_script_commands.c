@@ -1264,7 +1264,7 @@ u32 GetTotalAccuracy(u32 battlerAtk, u32 battlerDef, MoveEnum move, struct MoveS
 
     if (gStatuses3[battlerDef] & STATUS3_ALWAYS_HITS && gVolatileStructs[battlerDef].battlerWithSureHit == battlerAtk) return 101;
     if (gStatuses3[battlerDef] & STATUS3_TELEKINESIS && !IsBattlerGrounded(battlerDef)) return 101;
-    if (B_TOXIC_NEVER_MISS >= GEN_6 && gBattleMoves[move].effect == EFFECT_TOXIC && IS_BATTLER_OF_TYPE(battlerAtk, TYPE_POISON)) return 101;
+    if (B_TOXIC_NEVER_MISS >= GEN_6 && gBattleMoves[move].effect == EFFECT_TOXIC && (IS_BATTLER_OF_TYPE(battlerAtk, TYPE_POISON) || BattlerHasAbility(gActiveBattler, ABILITY_CORROSION, FALSE) || BattlerHasAbility(gActiveBattler, ABILITY_ACID_REFLUX, FALSE))) return 101;
     if (IsMyceliumMightActive(battlerAtk)) return 101;
 
     if ((gStatuses3[battlerDef] & STATUS3_PHANTOM_FORCE) || (!(gBattleMoves[move].flags & FLAG_DMG_IN_AIR) && gStatuses3[battlerDef] & STATUS3_ON_AIR) ||
@@ -1545,6 +1545,9 @@ s32 CalcCritChanceStage(u8 battlerAtk, u8 battlerDef, MoveEnum move, u16 typeEff
         (gVolatileStructs[battlerAtk].showdownMode)) {
         return ALWAYS_CRIT;
     }
+
+    //Super Luck
+    if(IsAbilityOnSide(gBattlerAttacker, ABILITY_SUPER_LUCK)) { critChance += 1; }
 
     // Boost Critical Chance
     critChance += ((gBattleMoves[gCurrentMove].flags & FLAG_HIGH_CRIT) != 0) + (holdEffectAtk == HOLD_EFFECT_SCOPE_LENS) +
@@ -6846,7 +6849,7 @@ static void Cmd_various(void) {
 
                     if (!(gStatuses3[gBattlerTarget] & STATUS3_EMBARGO)) {
                         gStatuses3[gBattlerTarget] |= STATUS3_EMBARGO;
-                        gVolatileStructs[gBattlerTarget].embargoTimer = 8;
+                        gVolatileStructs[gBattlerTarget].embargoTimer = 5;
                     }
                     return;
                 }
@@ -6903,15 +6906,7 @@ static void Cmd_various(void) {
             } 
             else 
             {   
-                if(!(IS_BATTLER_OF_TYPE(gActiveBattler, TYPE_GRASS)))
-                {
-                    gBattleMoveDamage = gBattleMons[gActiveBattler].maxHP / 16;
-                }
-//Heal grass types twice as much
-                else
-                {
-                    gBattleMoveDamage = gBattleMons[gActiveBattler].maxHP / 8;
-                }
+                gBattleMoveDamage = gBattleMons[gActiveBattler].maxHP / 16;
                 if (gBattleMoveDamage == 0) gBattleMoveDamage = 1;
                 gBattleMoveDamage *= -1;
             }

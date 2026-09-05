@@ -6621,6 +6621,8 @@ ProtectType IsBattlerProtected(u8 battlerId, MoveEnum move) {
         evadesProtect = TRUE;
     else if (BATTLER_HAS_ABILITY(gBattlerAttacker, ABILITY_PINNACLE_BLADE) && IsKeenEdge(battlerId, move, moveType))
         evadesProtect = TRUE;
+    else if (BATTLER_HAS_ABILITY(gBattlerAttacker, ABILITY_INFILTRATOR))
+        evadesProtect = TRUE;
     else if (!(gBattleMoves[move].flags & FLAG_PROTECT_AFFECTED))
         evadesProtect = TRUE;
     else if (gBattleMoves[move].effect == EFFECT_FEINT)
@@ -7067,7 +7069,7 @@ u32 CalcMoveBasePowerAfterModifiers(MoveEnum move, u8 fixedPower, u8 battlerAtk,
         case EFFECT_BULLDOZE:
         case EFFECT_MAGNITUDE:
         case EFFECT_EARTHQUAKE:
-            if (GetCurrentTerrain() == STATUS_FIELD_GRASSY_TERRAIN && !(gStatuses3[battlerDef] & STATUS3_SEMI_INVULNERABLE))
+            if (GetCurrentTerrain() == STATUS_FIELD_GRASSY_TERRAIN)// && !(gStatuses3[battlerDef] & STATUS3_SEMI_INVULNERABLE))
                 MulModifier(&modifier, UQ_4_12(0.5));
             break;
         case EFFECT_KNOCK_OFF:
@@ -7111,6 +7113,8 @@ u32 CalcMoveBasePowerAfterModifiers(MoveEnum move, u8 fixedPower, u8 battlerAtk,
         }
 
         if (terrainType == moveType && (terrainType != TYPE_FAIRY)) MUL_MODIFIER(&modifier, 1.3);
+//Misty weakens dragon moves again
+        if (terrainType == TYPE_FAIRY && moveType == TYPE_DRAGON) MUL_MODIFIER(&modifier, 0.5);
     }
 
     return ApplyModifier(modifier, actualPower);
@@ -7445,7 +7449,7 @@ static u32 CalcDefenseStat(MoveEnum move, u8 battlerAtk, u8 battlerDef, u8 moveT
                 MulModifier(&modifier, UQ_4_12(2.0));
             break;
         case HOLD_EFFECT_EVIOLITE:
-            if (CanEvolveStrict(gBattleMons[battlerDef].species) && (gBattleMons[battlerDef].species != SPECIES_NECROZMA)) MulModifier(&modifier, UQ_4_12(1.5));
+            if (CanEvolve(gBattleMons[battlerDef].species) && (gBattleMons[battlerDef].species != SPECIES_NECROZMA)) MulModifier(&modifier, UQ_4_12(1.5));
             break;
         case HOLD_EFFECT_ASSAULT_VEST:
             if (defStatToUse == STAT_SPDEF) MulModifier(&modifier, UQ_4_12(1.5));
@@ -8313,6 +8317,12 @@ bool32 CanBattlerGetOrLoseItem(u8 battlerId, u16 itemId) {
     // Mail can be stolen now
     if (itemId == ITEM_ENIGMA_BERRY)
         return FALSE;
+    else if (holdEffect == HOLD_EFFECT_ROCKY_HELMET)
+        return FALSE;
+    else if (holdEffect == HOLD_EFFECT_ASSAULT_VEST || holdEffect == HOLD_EFFECT_TACTICAL_VEST)
+        return FALSE;
+    else if (holdEffect == HOLD_EFFECT_EVIOLITE)
+        return FALSE;
     else if (holdEffect == HOLD_EFFECT_PRIMAL_ORB)
         return FALSE;
     else if (holdEffect == HOLD_EFFECT_MEGA_STONE)
@@ -8325,6 +8335,17 @@ bool32 CanBattlerGetOrLoseItem(u8 battlerId, u16 itemId) {
         return FALSE;
 #ifdef HOLD_EFFECT_Z_CRYSTAL
     else if (holdEffect == HOLD_EFFECT_Z_CRYSTAL)
+        return FALSE;
+//Signature items immune
+    else if (holdEffect == HOLD_EFFECT_DEEP_SEA_TOOTH)
+        return FALSE;
+    else if (holdEffect == HOLD_EFFECT_LEEK)
+        return FALSE;
+    else if (holdEffect == HOLD_EFFECT_LIGHT_BALL)
+        return FALSE;
+    else if (holdEffect == HOLD_EFFECT_LUCKY_PUNCH)
+        return FALSE;
+    else if (holdEffect == HOLD_EFFECT_THICK_CLUB)
         return FALSE;
 #endif
     else
@@ -8580,7 +8601,7 @@ void TrySaveExchangedItem(u8 battlerId, u16 stolenItem) {
 
 bool32 IsBattlerAffectedByHazards(u8 battlerId, bool32 stealthRock, int spikes) {
     if (GetBattlerHoldEffect(battlerId, TRUE) == HOLD_EFFECT_HEAVY_DUTY_BOOTS) return FALSE;
-    if (BattlerHasAbility(battlerId, ABILITY_SHIELD_DUST, FALSE)) return FALSE;
+    if (BattlerHasAbility(battlerId, ABILITY_SHIELD_DUST, FALSE) || BattlerHasAbility(battlerId, ABILITY_MEASURED_STEPS, FALSE)) return FALSE;
     if (stealthRock) ON_ABILITY(battlerId, FALSE, gAbilities[ability].stealthRockImmune, return FALSE)
     if ((stealthRock || spikes) && IS_BATTLER_OF_TYPE(battlerId, TYPE_GROUND))
         ON_ABILITY(battlerId, FALSE, gAbilities[ability].tectonizeImmunities, return FALSE)

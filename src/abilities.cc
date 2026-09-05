@@ -525,8 +525,13 @@ template <>
 constexpr Ability Impl<ABILITY_BATTLE_ARMOR> = {
     .onDefensiveMultiplier = +[](ON_DEFENSIVE_MULTIPLIER) { MUL(.8); },
     .onCrit = +[](ON_CRIT) { return NEVER_CRIT; },
+    .onStatusImmune = +[](ON_STATUS_IMMUNE) -> int {
+        CHECK(status & CHECK_BLEED)
+        return TRUE;
+    },
     .onCritFor = APPLY_ON_TARGET,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -660,7 +665,7 @@ constexpr Ability Impl<ABILITY_COLOR_CHANGE> = {
 
         for (Type currentType = TYPE_NORMAL; currentType < NUMBER_OF_MON_TYPES; ++currentType) {
             u16 currentModifier = GetTypeModifier(moveType, currentType, attacker, battler);
-            if (currentModifier < bestModifier) {
+            if (currentModifier <= bestModifier) {
                 bestModifier = currentModifier;
                 bestType = currentType;
             }
@@ -1353,8 +1358,10 @@ template <>
 constexpr Ability Impl<ABILITY_SHELL_ARMOR> = {
     .onDefensiveMultiplier = Impl<ABILITY_BATTLE_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_BATTLE_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_BATTLE_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_BATTLE_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -1590,7 +1597,7 @@ template <>
 constexpr Ability Impl<ABILITY_STALL> = {
     .onDefensiveMultiplier =
         +[](ON_DEFENSIVE_MULTIPLIER) {
-            if (gCurrentTurnActionNumber < GetBattlerTurnOrderNum(battler)) MUL(.7);
+            if (gCurrentTurnActionNumber < GetBattlerTurnOrderNum(battler)) MUL(.65);
         },
     .breakable = TRUE,
 };
@@ -1606,7 +1613,7 @@ constexpr Ability Impl<ABILITY_TECHNICIAN> = {
 template <>
 constexpr Ability Impl<ABILITY_LEAF_GUARD> = {
     .onEndTurn = +[](ON_END_TURN) -> int {
-        CHECK(IsBattlerWeatherAffected(battler, WEATHER_SUN_ANY))
+        CHECK(IsBattlerTerrainAffected(battler, STATUS_FIELD_GRASSY_TERRAIN))
 
         CHECK(AbilityHealMonStatus(battler, ability));
         return TRUE;
@@ -1621,7 +1628,18 @@ constexpr Ability Impl<ABILITY_MOLD_BREAKER> = {
 
 template <>
 constexpr Ability Impl<ABILITY_SUPER_LUCK> = {
-    .onCrit = +[](ON_CRIT) -> int { return 1; },
+    .onAccuracy = +[](ON_ACCURACY) -> AccuracyPriority {
+        if(*accuracy < 100 && *accuracy > 0) *accuracy *= 0;
+        return ACCURACY_MULTIPLICATIVE;
+    },
+    .onCrit = +[](ON_CRIT) -> int { return NEVER_CRIT; },
+    .onModifyEffectChance =
+        +[](ON_MODIFY_EFFECT_CHANCE) {
+            if (*effectChance < 100) *effectChance = 0;
+        },
+    .onAccuracyFor = APPLY_ON_FOE,
+    .onCritFor = APPLY_ON_FOE,
+    .onModifyEffectChanceFor = APPLY_ON_FOE,
 };
 
 template <>
@@ -1889,10 +1907,8 @@ constexpr Ability Impl<ABILITY_CURSED_BODY> = {
     .onDefender = +[](ON_DEFENDER) -> int {
         CHECK(ShouldApplyOnHitEffect(attacker))
         CHECK_NOT(gVolatileStructs[attacker].disabledMove)
-        // CHECK(IsMoveMakingContact(move, attacker))
         CHECK_NOT(IsAbilityStatusProtected(attacker, CHECK_RESTRICTING))
         CHECK(gBattleMons[attacker].pp[gChosenMovePos])
-        CHECK(Random() % 100 < 30)
 
         gVolatileStructs[attacker].disabledMove = gChosenMove;
         gVolatileStructs[attacker].disableTimer = 4;
@@ -1921,7 +1937,7 @@ constexpr Ability Impl<ABILITY_HEALER> = {
 
 template <>
 constexpr Ability Impl<ABILITY_FRIEND_GUARD> = {
-    .breakable = TRUE,
+    .breakable = FALSE,
 };
 
 template <>
@@ -2009,7 +2025,7 @@ constexpr Ability Impl<ABILITY_HARVEST> = {
         CHECK_NOT(gBattleMons[battler].item)
         CHECK_NOT(gBattleStruct->changedItems[battler])
         CHECK(ItemId_GetPocket(GetUsedHeldItem(battler)) == POCKET_BERRIES)
-        CHECK(IsBattlerWeatherAffected(battler, WEATHER_SUN_ANY) || Random() % 2)
+        CHECK(IsBattlerTerrainAffected(battler, STATUS_FIELD_GRASSY_TERRAIN) || Random() % 2)
 
         BattleScriptPushCursorAndCallback(BattleScript_HarvestActivates);
         return TRUE;
@@ -2261,14 +2277,14 @@ constexpr Ability Impl<ABILITY_VICTORY_STAR> = {
 
 template <>
 constexpr Ability Impl<ABILITY_TURBOBLAZE> = {
-    .onEntry = +[](ON_ENTRY) -> int { return AddBattlerType(battler, TYPE_FIRE); },
+    .onEntry = +[](ON_ENTRY) -> int { SwitchInAnnounce(B_MSG_SWITCHIN_TURBOBLAZE); return AddBattlerType(battler, TYPE_FIRE); },
     .onMoldBreaker = Impl<ABILITY_MOLD_BREAKER>.onMoldBreaker,
     .addsType = TYPE_FIRE,
 };
 
 template <>
 constexpr Ability Impl<ABILITY_TERAVOLT> = {
-    .onEntry = +[](ON_ENTRY) -> int { return AddBattlerType(battler, TYPE_ELECTRIC); },
+    .onEntry = +[](ON_ENTRY) -> int { SwitchInAnnounce(B_MSG_SWITCHIN_TERAVOLT); return AddBattlerType(battler, TYPE_ELECTRIC); },
     .onMoldBreaker = Impl<ABILITY_MOLD_BREAKER>.onMoldBreaker,
     .addsType = TYPE_ELECTRIC,
 };
@@ -3173,6 +3189,7 @@ constexpr Ability Impl<ABILITY_GRASSY_SURGE> = {
 template <>
 constexpr Ability Impl<ABILITY_SHADOW_SHIELD> = {
     .onDefensiveMultiplier = Impl<ABILITY_MULTISCALE>.onDefensiveMultiplier,
+    .breakable = true,
 };
 
 template <>
@@ -3658,9 +3675,8 @@ template <>
 constexpr Ability Impl<ABILITY_PRISM_SCALES> = {
     .onDefensiveMultiplier =
         +[](ON_DEFENSIVE_MULTIPLIER) {
-            if (IS_MOVE_SPECIAL(move)) MUL(.7);
+            if (IS_MOVE_SPECIAL(move)) MUL(.65);
         },
-    .breakable = TRUE,
 };
 
 template <>
@@ -4282,7 +4298,7 @@ constexpr Ability Impl<ABILITY_BAD_LUCK> = {
         +[](ON_MODIFY_EFFECT_CHANCE) {
             if (*effectChance < 100) *effectChance = 0;
         },
-    .onAccuracyFor = APPLY_ON_TARGET,
+    .onAccuracyFor = APPLY_ON_FOE,
     .onCritFor = APPLY_ON_FOE,
     .onModifyEffectChanceFor = APPLY_ON_FOE,
     .foesMinRoll = TRUE,
@@ -5139,14 +5155,6 @@ constexpr IntimidateCloneData Intimidate<ABILITY_FEARMONGER> = {
 template <>
 constexpr Ability Impl<ABILITY_FEARMONGER> = {
     .onEntry = UseIntimidateClone,
-    .onAttacker = +[](ON_ATTACKER) -> int {
-        CHECK(ShouldApplyOnHitEffect(target))
-        CHECK_NOT(gVolatileStructs[target].fear)
-        CHECK(IsMoveMakingContact(move, battler))
-        CHECK(Random() % 100 < 10)
-
-        return AbilityStatusEffect(MOVE_EFFECT_FEAR);
-    },
 };
 
 template <>
@@ -5155,14 +5163,6 @@ constexpr IntimidateCloneData Intimidate<ABILITY_FIRES_WRATH> = Intimidate<ABILI
 template <>
 constexpr Ability Impl<ABILITY_FIRES_WRATH> = {
     .onEntry = UseIntimidateClone,
-    .onAttacker = +[](ON_ATTACKER) -> int {
-        CHECK(ShouldApplyOnHitEffect(target))
-        CHECK(CanBeBurned(target))
-        CHECK_NOT(IsMoveMakingContact(move, battler))
-        CHECK(Random() % 100 < 10)
-
-        return AbilityStatusEffect(MOVE_EFFECT_BURN);
-    },
 };
 
 template <>
@@ -8817,8 +8817,10 @@ template <>
 constexpr Ability Impl<ABILITY_DREAM_STATE> = {
     .onDefensiveMultiplier = Impl<ABILITY_BATTLE_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_BATTLE_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_BATTLE_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_BATTLE_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -9242,8 +9244,10 @@ template <>
 constexpr Ability Impl<ABILITY_CRUST_COAT> = {
     .onDefensiveMultiplier = Impl<ABILITY_BATTLE_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_BATTLE_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_BATTLE_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_BATTLE_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -9298,8 +9302,10 @@ constexpr Ability Impl<ABILITY_FARADAY_CAGE> = {
     },
     .onDefensiveMultiplier = Impl<ABILITY_SHELL_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_SHELL_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_SHELL_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_SHELL_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -9847,8 +9853,8 @@ constexpr Ability Impl<ABILITY_BLUR> = {
 };
 
 template <>
-constexpr Ability Impl<ABILITY_SLEEK_SCALES> = {
-    .onChooseDefensiveStat = +[](ON_CHOOSE_DEFENSIVE_STAT) { secondaryDefStatToUse[STAT_SPEED] += 15; },
+constexpr Ability Impl<ABILITY_ELEGANT_MOVEMENTS> = {
+    .onChooseDefensiveStat = +[](ON_CHOOSE_DEFENSIVE_STAT) { secondaryDefStatToUse[STAT_SPEED] += 33; },
     .onChooseDefensiveStatFor = APPLY_ON_TARGET,
 };
 
@@ -9889,6 +9895,7 @@ constexpr Ability Impl<ABILITY_STRATEGIC_PAUSE> = {
 
 template <>
 constexpr Ability Impl<ABILITY_OVERRULE> = {
+    .onEntry = +[](ON_ENTRY) -> int { return SwitchInAnnounce(B_MSG_SWITCHIN_MOLDBREAKER); },
     .onOffensiveMultiplier =
         +[](ON_OFFENSIVE_MULTIPLIER) {
             if (gIsCriticalHit && typeEffectivenessMultiplier < UQ_4_12(1.0)) RESISTANCE(2);
@@ -9934,14 +9941,16 @@ constexpr Ability Impl<ABILITY_SOUL_TAP> = {
     .onEndTurn = +[](ON_END_TURN) -> int {
         CHECK(IsBattlerWeatherAffected(battler, WEATHER_FOG_ANY))
         int any = FALSE;
-        for (u8 target = GetOppositeSide(battler); target < gBattlersCount; target += 2) {
+        for (u8 target = 0; target < gBattlersCount; target++) 
+        {
             FILTER(IsBattlerAlive(target))
+            FILTER(GetBattlerSide(target) != GetBattlerSide(battler))
             FILTER_NOT(IsMagicGuardProtected(target))
 
             gStackBattler1 = battler;
             gStackBattler2 = target;
             gHitMarker |= HITMARKER_IGNORE_SUBSTITUTE | HITMARKER_PASSIVE_DAMAGE | HITMARKER_IGNORE_DISGUISE;
-            BattleScriptExecute(BattleScript_AbilityDrainsHp);
+            BattleScriptPushCursorAndCallback(BattleScript_AbilityDrainsHpCanBeFromMultiple);
             any = TRUE;
         }
         return any;
@@ -9949,7 +9958,7 @@ constexpr Ability Impl<ABILITY_SOUL_TAP> = {
 };
 
 template <>
-constexpr IntimidateCloneData Intimidate<ABILITY_SCARECROW> = Intimidate<ABILITY_SCARE>;
+constexpr IntimidateCloneData Intimidate<ABILITY_SCARECROW> = Intimidate<ABILITY_FEARMONGER>;
 
 template <>
 constexpr Ability Impl<ABILITY_SCARECROW> = {
@@ -10603,11 +10612,8 @@ constexpr Ability Impl<ABILITY_PROPELLER_TAIL> = {
 
 template <>
 constexpr Ability Impl<ABILITY_STALWART> = {
+    .onDefensiveMultiplier = +[](ON_DEFENSIVE_MULTIPLIER) { MUL(.8); },
     .onCrit = +[](ON_CRIT) { return NEVER_CRIT; },
-    .onStatusImmune = +[](ON_STATUS_IMMUNE) -> int {
-        CHECK(status & (CHECK_REDIRECTION))
-        return TRUE;
-    },
     .onCritFor = APPLY_ON_TARGET,
     .unsuppressable = TRUE,
 };
@@ -10718,6 +10724,7 @@ constexpr Ability Impl<ABILITY_PAINT_SHOT> = {
 
 template <>
 constexpr Ability Impl<ABILITY_STONECUTTER> = {
+    .onEntry = +[](ON_ENTRY) -> int { return SwitchInAnnounce(B_MSG_SWITCHIN_MOLDBREAKER); },
     .onOffensiveMultiplier = Impl<ABILITY_FOSSILIZED>.onOffensiveMultiplier,
     .onDefensiveMultiplier = Impl<ABILITY_FOSSILIZED>.onDefensiveMultiplier,
     .onMoldBreaker = +[](ON_MOLD_BREAKER) -> int {
@@ -10786,9 +10793,12 @@ constexpr Ability Impl<ABILITY_CURSE_OF_FAMINE> = {
 
 template <>
 constexpr Ability Impl<ABILITY_CRYSTALLINE_ARMOR> = {
+    .onDefensiveMultiplier = Impl<ABILITY_BATTLE_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_BATTLE_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_BATTLE_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_BATTLE_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
     .mirrorArmor = TRUE,
 };
 
@@ -10843,7 +10853,7 @@ constexpr Ability Impl<ABILITY_DEEP_FRIED> = {
 template <>
 constexpr Ability Impl<ABILITY_FOOD_LOVERS> = {
     .onEntry = Impl<ABILITY_HOSPITALITY>.onEntry,
-    .breakable = TRUE,
+    .breakable = FALSE,
 };
 
 template <>
@@ -11524,8 +11534,10 @@ constexpr Ability Impl<ABILITY_TOXIC_SHELL> = {
     .onDefender = Impl<ABILITY_POISON_POINT>.onDefender,
     .onDefensiveMultiplier = Impl<ABILITY_SHELL_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_SHELL_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_SHELL_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_SHELL_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -11624,8 +11636,10 @@ constexpr Ability Impl<ABILITY_VOLTRON> = {
     .onEntry = Impl<ABILITY_METALLIC>.onEntry,
     .onDefensiveMultiplier = Impl<ABILITY_BATTLE_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_BATTLE_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_BATTLE_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_BATTLE_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
     .addsType = TYPE_STEEL,
 };
 
@@ -12270,14 +12284,15 @@ constexpr Ability Impl<ABILITY_ACID_REFLUX> = {
 
         gQueuedExtraAttackData[++gQueuedAttackCount] = (struct ExtraAttackActionStruct){
             .ability = ability,
-            .move = MOVE_ACID,
-            .movePower = 20,
+            .move = MOVE_TOXIC,
             .attacker = (u8)battler,
             .target = (u8)BATTLE_OPPOSITE(battler),
         };
 
         return TRUE;
     },
+    .onTypeEffectiveness = Impl<ABILITY_CORROSION>.onTypeEffectiveness,
+    .onCanStatusType = Impl<ABILITY_CORROSION>.onCanStatusType,
 };
 
 template <>
@@ -12290,8 +12305,10 @@ constexpr Ability Impl<ABILITY_SHATTERED_ARMOR> = {
     .onDefender = Impl<ABILITY_SCRAPYARD>.onDefender,
     .onDefensiveMultiplier = Impl<ABILITY_BATTLE_ARMOR>.onDefensiveMultiplier,
     .onCrit = Impl<ABILITY_BATTLE_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_BATTLE_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_BATTLE_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -12330,8 +12347,10 @@ constexpr Ability Impl<ABILITY_FORTRESS> = {
             Impl<ABILITY_SHELL_ARMOR>.onDefensiveMultiplier(DELEGATE_DEFENSIVE_MULTIPLIER);
         },
     .onCrit = Impl<ABILITY_SHELL_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_SHELL_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_SHELL_ARMOR>.onCritFor,
     .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
 };
 
 template <>
@@ -12480,9 +12499,11 @@ constexpr Ability Impl<ABILITY_DROIDEKA> = {
             Impl<ABILITY_SHELL_ARMOR>.onDefensiveMultiplier(DELEGATE_DEFENSIVE_MULTIPLIER);
         },
     .onCrit = Impl<ABILITY_SHELL_ARMOR>.onCrit,
+    .onStatusImmune = Impl<ABILITY_SHELL_ARMOR>.onStatusImmune,
     .onCritFor = Impl<ABILITY_SHELL_ARMOR>.onCritFor,
     .breakable = TRUE,
     .negatesBurnAtkDrop = TRUE,
+    .removesStatusOnImmunity = TRUE,
     .noBurnDamage = TRUE,
 };
 
@@ -12732,6 +12753,36 @@ constexpr Ability Impl<ABILITY_SUPERHERO> = {
             if (IS_BATTLER_OF_TYPE(attacker, TYPE_DARK)) MUL(.5);
         },
 };
+
+template <>
+constexpr Ability Impl<ABILITY_MEASURED_STEPS> = {
+    .onStatusImmune = +[](ON_STATUS_IMMUNE) -> int {
+        CHECK(status & CHECK_PARALYSIS)
+        return TRUE;
+    },
+    .breakable = TRUE,
+    .removesStatusOnImmunity = TRUE,
+};
+
+template <>
+constexpr Ability Impl<ABILITY_ESCAPE_ARTIST> = {
+    .onOffensiveMultiplier =
+        +[](ON_OFFENSIVE_MULTIPLIER) {
+            if(gBattleMoves[move].effect == EFFECT_HIT_ESCAPE) MUL(1.3);
+        },
+    .onPriority = +[](ON_PRIORITY) -> int {
+        CHECK(gBattleMoves[move].effect == EFFECT_HIT_ESCAPE)
+        return 2;
+    },
+};
+
+template <>
+constexpr Ability Impl<ABILITY_DUBIOUS_LITTLE_CREATURE> = {
+    .onEntry = Impl<ABILITY_FRISK>.onEntry,
+    .onOffensiveMultiplier = Impl<ABILITY_ESCAPE_ARTIST>.onOffensiveMultiplier,
+    .onPriority = Impl<ABILITY_ESCAPE_ARTIST>.onPriority,
+};
+
 
 #define FOR_EACH_ABILITY_FUNCTION(abilityId) \
     if (Intimidate<abilityId>.statsLowered[0]) count++;

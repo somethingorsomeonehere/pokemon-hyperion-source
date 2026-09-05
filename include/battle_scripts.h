@@ -216,6 +216,7 @@ extern const u8 BattleScript_SkyDropInAir[];
 extern const u8 BattleScript_FuneralPyreDamage[];
 extern const u8 BattleScript_FireCoatDamage[];
 extern const u8 BattleScript_AbilityDrainsHp[];
+extern const u8 BattleScript_AbilityDrainsHpCanBeFromMultiple[];
 extern const u8 BattleScript_MoveSecondStatusEffect[];
 extern const u8 BattleScript_DoRudeAwakening[];
 extern const u8 BattleScript_AttackerFormChange[];
